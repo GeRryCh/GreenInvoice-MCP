@@ -1,567 +1,511 @@
 /**
  * MCP tool definitions for the Green Invoice API.
+ * Consolidated resource-based tools covering all 66 API endpoints.
  *
  * DISCLAIMER: This is an unofficial, third-party integration.
  * Not affiliated with or endorsed by Green Invoice.
+ *
+ * API Reference: https://www.greeninvoice.co.il/api-docs/
+ * Apiary spec last updated: 2026-03-11
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { GreenInvoiceClient } from "./client.js";
 
-// ── Reference data exposed as tool descriptions ──────────────────────────
+// ── Shared helpers ─────────────────────────────────────────────────────
 
-const DOC_TYPES_DESC = `Document type codes:
-10=Price Quote, 100=Order, 200=Delivery Note, 210=Return Delivery Note,
-300=Transaction Account, 305=Tax Invoice, 320=Tax Invoice+Receipt,
-330=Credit Invoice, 400=Receipt, 405=Donation Receipt,
-500=Purchase Order, 600=Deposit Receipt, 610=Deposit Withdrawal`;
+function json(data: unknown) {
+  return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+}
 
-const PAYMENT_TYPES_DESC = `Payment type codes:
--1=Unpaid, 0=Deduction at Source, 1=Cash, 2=Check, 3=Credit Card,
-4=Bank Transfer, 5=PayPal, 10=Payment App, 11=Other`;
+function parseData(raw?: string): unknown {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`Invalid JSON in 'data' parameter: ${raw}`);
+  }
+}
 
-const CURRENCY_DESC = `Currencies: ILS, USD, EUR, GBP, JPY, CHF, CNY, AUD, CAD, and more`;
+// ── Reference enums (embedded in descriptions) ────────────────────────
+
+const DOC_TYPES = `Document type codes: 10=Price Quote, 100=Order, 200=Delivery Note, 210=Return Delivery Note, 300=Transaction Account, 305=Tax Invoice, 320=Tax Invoice+Receipt, 330=Credit Invoice, 400=Receipt, 405=Donation Receipt, 500=Purchase Order, 600=Deposit Receipt, 610=Deposit Withdrawal`;
+
+const DOC_STATUSES = `Document statuses: 0=Open, 1=Closed, 2=Manually Closed, 3=Canceling, 4=Canceled`;
+
+const PAYMENT_TYPES = `Payment type codes: -1=Unpaid, 0=Deduction at Source, 1=Cash, 2=Check, 3=Credit Card, 4=Bank Transfer, 5=PayPal, 10=Payment App, 11=Other`;
+
+const CURRENCIES = `Currencies: ILS, USD, EUR, GBP, JPY, CHF, CNY, AUD, CAD, and more (28 supported)`;
+
+// ════════════════════════════════════════════════════════════════════════
 
 export function registerTools(server: McpServer, client: GreenInvoiceClient) {
-  // ════════════════════════════════════════════════════════════════════
-  //  ACCOUNT
-  // ════════════════════════════════════════════════════════════════════
 
-  server.tool("get_account", "Get current account information", {}, async () => {
-    const data = await client.get("/account/me");
-    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-  });
+  // ── 1. ACCOUNT ───────────────────────────────────────────────────────
 
   server.tool(
-    "get_account_settings",
-    "Get account settings",
-    {},
-    async () => {
-      const data = await client.get("/account/settings");
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  // ════════════════════════════════════════════════════════════════════
-  //  BUSINESSES
-  // ════════════════════════════════════════════════════════════════════
-
-  server.tool(
-    "get_business",
-    "Get business information for the authenticated account",
-    {},
-    async () => {
-      const data = await client.get("/businesses");
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "update_business",
-    "Update business information",
-    { data: z.string().describe("JSON string of business fields to update") },
-    async ({ data }) => {
-      const result = await client.put("/businesses", JSON.parse(data));
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
-    }
-  );
-
-  // ════════════════════════════════════════════════════════════════════
-  //  DOCUMENTS
-  // ════════════════════════════════════════════════════════════════════
-
-  server.tool(
-    "search_documents",
-    `Search documents with filters and pagination. ${DOC_TYPES_DESC}. Document statuses: 0=Open, 1=Closed, 2=Manually Closed, 3=Canceling, 4=Canceled`,
+    "account",
+    `Get account information.
+Actions: "get" = account info (GET /account/me), "settings" = account settings (GET /account/settings).`,
     {
-      page: z.number().optional().describe("Page number (default 0)"),
-      pageSize: z
-        .number()
-        .optional()
-        .describe("Results per page (default 20, max 50)"),
-      type: z
-        .array(z.number())
-        .optional()
-        .describe("Filter by document type codes"),
-      status: z
-        .array(z.number())
-        .optional()
-        .describe("Filter by status codes"),
-      fromDate: z.string().optional().describe("From date (YYYY-MM-DD)"),
-      toDate: z.string().optional().describe("To date (YYYY-MM-DD)"),
-      sort: z
-        .string()
-        .optional()
-        .describe("Sort field (e.g. 'creationDate', 'documentDate')"),
-      sortType: z
-        .enum(["asc", "desc"])
-        .optional()
-        .describe("Sort direction"),
+      action: z.enum(["get", "settings"]).describe("Action to perform"),
     },
-    async (params) => {
-      const data = await client.post("/documents/search", params);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+    async ({ action }) => {
+      const path = action === "settings" ? "/account/settings" : "/account/me";
+      return json(await client.get(path));
     }
   );
 
-  server.tool(
-    "get_document",
-    "Get a document by ID",
-    { id: z.string().describe("Document ID") },
-    async ({ id }) => {
-      const data = await client.get(`/documents/${id}`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
+  // ── 2. BUSINESS ──────────────────────────────────────────────────────
 
   server.tool(
-    "create_document",
-    `Create a new document (invoice, receipt, quote, etc.).
-${DOC_TYPES_DESC}
-${PAYMENT_TYPES_DESC}
-${CURRENCY_DESC}
-
-IMPORTANT field names: use 'income' (not 'items'), 'payment' (not 'payments'),
-'remarks' (not 'notes'), 'lang' (not 'language'), 'emails' (array, not 'email').
-Types 320, 400, 405 REQUIRE a payment array. Payment dates cannot be in the future for receipts.
-Set client.add=true to auto-create the client if they don't exist.`,
+    "business",
+    `Manage businesses. Actions:
+"list" = list all user businesses (GET /businesses)
+"get" = get current business (GET /businesses/me) or by id (data: {"id":"..."})
+"update" = update business (data: JSON of fields to update)
+"get_numbering" = get document numbering (GET /businesses/numbering)
+"set_numbering" = set initial numbering (data: {"10":1,"305":50001,...})
+"get_footer" = get document footer text
+"get_types" = get business types (data: {"lang":"he"} optional)
+"upload_file" = upload logo/signature/doc (data: {"type":"logo","file":"base64..."})
+"delete_file" = delete a file (data: {"type":"logo"})`,
     {
-      type: z.number().describe("Document type code (e.g. 305, 320)"),
-      client: z
-        .object({
-          id: z.string().optional().describe("Existing client ID"),
-          name: z.string().optional().describe("Client name"),
-          emails: z
-            .array(z.string())
-            .optional()
-            .describe("Client email addresses"),
-          taxId: z.string().optional().describe("Client tax/VAT ID"),
-          add: z
-            .boolean()
-            .optional()
-            .describe("Auto-create client if not found"),
-        })
-        .describe("Client information"),
-      income: z
-        .array(
-          z.object({
-            description: z.string().describe("Line item description"),
-            quantity: z.number().describe("Quantity"),
-            price: z.number().describe("Unit price"),
-            currency: z.string().optional().describe("Currency code"),
-            vatType: z
-              .number()
-              .optional()
-              .describe("0=default, 1=VAT included, 2=VAT exempt"),
-          })
-        )
-        .describe("Income line items"),
-      payment: z
-        .array(
-          z.object({
-            type: z.number().describe("Payment type code"),
-            price: z.number().describe("Payment amount"),
-            currency: z.string().optional().describe("Currency code"),
-            date: z.string().describe("Payment date (YYYY-MM-DD)"),
-            bankName: z.string().optional(),
-            bankBranch: z.string().optional(),
-            bankAccount: z.string().optional(),
-            chequeNum: z.string().optional(),
-          })
-        )
-        .optional()
-        .describe("Payment lines (required for types 320, 400, 405)"),
-      currency: z.string().optional().describe("Document currency (default ILS)"),
-      lang: z.enum(["he", "en"]).optional().describe("Document language"),
-      description: z.string().optional().describe("Document description/title"),
-      remarks: z.string().optional().describe("Remarks/notes"),
-      footer: z.string().optional().describe("Footer text"),
-      emailContent: z.string().optional().describe("Custom email body"),
-      signed: z.boolean().optional().describe("Digitally sign the document"),
-      rounding: z.boolean().optional().describe("Round totals"),
-      attachment: z.boolean().optional().describe("Attach PDF to email"),
+      action: z.enum(["list", "get", "update", "get_numbering", "set_numbering", "get_footer", "get_types", "upload_file", "delete_file"])
+        .describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters (see action descriptions)"),
     },
-    async (params) => {
-      const data = await client.post("/documents", params);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      switch (action) {
+        case "list":
+          return json(await client.get("/businesses"));
+        case "get": {
+          const id = data?.id as string | undefined;
+          return json(await client.get(id ? `/businesses/${id}` : "/businesses/me"));
+        }
+        case "update":
+          return json(await client.put("/businesses", data));
+        case "get_numbering":
+          return json(await client.get("/businesses/numbering"));
+        case "set_numbering":
+          return json(await client.put("/businesses/numbering", data));
+        case "get_footer":
+          return json(await client.get("/businesses/footer"));
+        case "get_types": {
+          const lang = data?.lang ? `?lang=${data.lang}` : "";
+          return json(await client.get(`/businesses/types${lang}`));
+        }
+        case "upload_file":
+          return json(await client.post("/businesses/file", data));
+        case "delete_file":
+          return json(await client.request("DELETE", "/businesses/file", data));
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
     }
   );
 
+  // ── 3. DOCUMENT ──────────────────────────────────────────────────────
+
   server.tool(
-    "update_document",
-    "Update an existing document",
+    "document",
+    `Manage documents (invoices, receipts, quotes, etc.). ${DOC_TYPES}. ${DOC_STATUSES}. ${PAYMENT_TYPES}. ${CURRENCIES}.
+
+Actions:
+"search" = search documents (data: {page, pageSize, type:[], status:[], fromDate, toDate, sort, clientId, clientName, description, number, paymentTypes:[], download})
+"get" = get by ID (data: {"id":"..."})
+"create" = create document. IMPORTANT field names: 'income' (not 'items'), 'payment' (not 'payments'), 'remarks' (not 'notes'), 'lang' (not 'language'), 'emails' (array). Types 320,400,405 REQUIRE payment array. Set client.add=true to auto-create client. Data: {type, client:{id,name,emails,taxId,address,city,zip,country,phone,add,self}, income:[{catalogNum,description,quantity,price,currency,vatType,itemId}], payment:[{date,type,price,currency,bankName,bankBranch,bankAccount,chequeNum}], currency,lang,description,remarks,footer,emailContent,signed,rounding,attachment,date,dueDate,discount:{amount,type},maxPayments,linkedDocumentIds,linkedPaymentId}
+"update" = update document (data: {"id":"...", ...fields})
+"close" = close document (data: {"id":"..."})
+"open" = reopen document (data: {"id":"..."})
+"send" = send via email (data: {"id":"...", "email":"optional-override"})
+"download_links" = get PDF download links (data: {"id":"..."})
+"add_payment" = add payment to document (data: {"id":"...", type, price, currency, date, bankName, bankBranch, bankAccount, chequeNum})
+"preview" = preview as base64 PDF (data: same shape as create)
+"get_linked" = get linked documents (data: {"id":"..."})
+"get_info" = get document info for a type (data: {"type":305})
+"get_types" = list document types (data: {"lang":"he"} optional)
+"get_statuses" = list document statuses (data: {"lang":"he"} optional)
+"search_payments" = search payments within documents (data: {page, pageSize, type:[], paymentTypes:[], fromDate, toDate, paymentId, sort})`,
     {
-      id: z.string().describe("Document ID"),
-      data: z.string().describe("JSON string of fields to update"),
+      action: z.enum(["search", "get", "create", "update", "close", "open", "send", "download_links", "add_payment", "preview", "get_linked", "get_info", "get_types", "get_statuses", "search_payments"])
+        .describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters"),
     },
-    async ({ id, data }) => {
-      const result = await client.put(`/documents/${id}`, JSON.parse(data));
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      const id = data?.id as string | undefined;
+      switch (action) {
+        case "search":
+          return json(await client.post("/documents/search", data));
+        case "get":
+          return json(await client.get(`/documents/${id}`));
+        case "create": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.post("/documents", body));
+        }
+        case "update": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.put(`/documents/${id}`, body));
+        }
+        case "close":
+          return json(await client.post(`/documents/${id}/close`));
+        case "open":
+          return json(await client.post(`/documents/${id}/open`));
+        case "send": {
+          const body: Record<string, unknown> = {};
+          if (data?.email) body.email = data.email;
+          return json(await client.post(`/documents/${id}/send`, body));
+        }
+        case "download_links":
+          return json(await client.get(`/documents/${id}/download/links`));
+        case "add_payment": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.post(`/documents/${id}/payment`, body));
+        }
+        case "preview":
+          return json(await client.post("/documents/preview", data));
+        case "get_linked":
+          return json(await client.get(`/documents/${id}/linked`));
+        case "get_info": {
+          const type = data?.type;
+          return json(await client.get(`/documents/info?type=${type}`));
+        }
+        case "get_types": {
+          const lang = data?.lang ? `?lang=${data.lang}` : "";
+          return json(await client.get(`/documents/types${lang}`));
+        }
+        case "get_statuses": {
+          const lang = data?.lang ? `?lang=${data.lang}` : "";
+          return json(await client.get(`/documents/statuses${lang}`));
+        }
+        case "search_payments":
+          return json(await client.post("/documents/payments/search", data));
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
     }
   );
 
-  server.tool(
-    "delete_document",
-    "Delete a document by ID",
-    { id: z.string().describe("Document ID") },
-    async ({ id }) => {
-      const data = await client.delete(`/documents/${id}`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
+  // ── 4. CLIENT ────────────────────────────────────────────────────────
 
   server.tool(
-    "close_document",
-    "Close/mark a document as closed",
-    { id: z.string().describe("Document ID") },
-    async ({ id }) => {
-      const data = await client.post(`/documents/${id}/close`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "send_document",
-    "Send a document via email",
+    "client",
+    `Manage clients. Actions:
+"search" = search clients (data: {page, pageSize, name, email, taxId, active, contactPerson, labels:[], sort, sortType})
+"get" = get by ID (data: {"id":"..."})
+"create" = create client (data: {name, emails:[], taxId, phone, mobile, fax, city, zip, address, country, category, subCategory, accountingKey, paymentTerms, bankName, bankBranch, bankAccount, active, department, contactPerson, remarks, labels:[]})
+"update" = update client (data: {"id":"...", ...fields})
+"delete" = delete client (NOTE: only inactive clients can be deleted) (data: {"id":"..."})
+"associate_docs" = associate existing documents to a client (data: {"id":"...", "ids":["docId1","docId2"]})
+"merge" = merge clients (one must be inactive; inactive one is deleted) (data: {"id":"...", "mergeId":"..."})
+"update_balance" = update/reset client balance (data: {"id":"...", "balance":0})`,
     {
-      id: z.string().describe("Document ID"),
-      email: z.string().optional().describe("Override recipient email"),
+      action: z.enum(["search", "get", "create", "update", "delete", "associate_docs", "merge", "update_balance"])
+        .describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters"),
     },
-    async ({ id, ...rest }) => {
-      const data = await client.post(`/documents/${id}/send`, rest);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      const id = data?.id as string | undefined;
+      switch (action) {
+        case "search":
+          return json(await client.post("/clients/search", data));
+        case "get":
+          return json(await client.get(`/clients/${id}`));
+        case "create": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.post("/clients", body));
+        }
+        case "update": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.put(`/clients/${id}`, body));
+        }
+        case "delete":
+          return json(await client.delete(`/clients/${id}`));
+        case "associate_docs": {
+          const ids = data?.ids;
+          return json(await client.post(`/clients/${id}/assoc`, { ids }));
+        }
+        case "merge": {
+          const mergeId = data?.mergeId;
+          return json(await client.post(`/clients/${id}/merge`, { mergeId }));
+        }
+        case "update_balance": {
+          const balance = data?.balance;
+          return json(await client.post(`/clients/${id}/balance`, { balance }));
+        }
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
     }
   );
 
-  server.tool(
-    "get_document_download_links",
-    "Get download links (Hebrew, English, original) for a document",
-    { id: z.string().describe("Document ID") },
-    async ({ id }) => {
-      const data = await client.get(`/documents/${id}/download/links`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
+  // ── 5. SUPPLIER ──────────────────────────────────────────────────────
 
   server.tool(
-    "add_document_payment",
-    `Add a payment to an existing document. ${PAYMENT_TYPES_DESC}`,
+    "supplier",
+    `Manage suppliers (used for expenses). Actions:
+"search" = search suppliers (data: {page, pageSize, name, email, active, contactPerson, labels:[]})
+"get" = get by ID (data: {"id":"..."})
+"create" = create supplier (data: {name, emails:[], taxId, phone, mobile, fax, city, zip, address, country, department, accountingKey, paymentTerms, bankName, bankBranch, bankAccount, active, contactPerson, remarks, labels:[]})
+"update" = update supplier (data: {"id":"...", ...fields})
+"delete" = delete supplier (NOTE: only inactive suppliers can be deleted) (data: {"id":"..."})
+"merge" = merge suppliers (one must be inactive) (data: {"id":"...", "mergeId":"..."})`,
     {
-      id: z.string().describe("Document ID"),
-      type: z.number().describe("Payment type code"),
-      price: z.number().describe("Payment amount"),
-      currency: z.string().optional().describe("Currency code"),
-      date: z.string().describe("Payment date (YYYY-MM-DD)"),
+      action: z.enum(["search", "get", "create", "update", "delete", "merge"])
+        .describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters"),
     },
-    async ({ id, ...payment }) => {
-      const data = await client.post(`/documents/${id}/payment`, payment);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      const id = data?.id as string | undefined;
+      switch (action) {
+        case "search":
+          return json(await client.post("/suppliers/search", data));
+        case "get":
+          return json(await client.get(`/suppliers/${id}`));
+        case "create": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.post("/suppliers", body));
+        }
+        case "update": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.put(`/suppliers/${id}`, body));
+        }
+        case "delete":
+          return json(await client.delete(`/suppliers/${id}`));
+        case "merge": {
+          const mergeId = data?.mergeId;
+          return json(await client.post(`/suppliers/${id}/merge`, { mergeId }));
+        }
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
     }
   );
 
+  // ── 6. ITEM ──────────────────────────────────────────────────────────
+
   server.tool(
-    "preview_document",
-    "Preview a document (returns base64 PDF)",
+    "item",
+    `Manage catalog items (products/services). Actions:
+"search" = search items (data: {page, pageSize, name, description, currency, active})
+"get" = get by ID (data: {"id":"..."})
+"create" = create item (data: {name, description, price, currency, vatType (0=default,1=included,2=exempt), sku, active})
+"update" = update item (data: {"id":"...", ...fields})
+"delete" = delete item (data: {"id":"..."})`,
     {
-      data: z.string().describe("JSON string of document preview data (same shape as create_document: type, client, income, payment, currency, lang)"),
+      action: z.enum(["search", "get", "create", "update", "delete"])
+        .describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters"),
     },
-    async ({ data: jsonStr }) => {
-      const data = await client.post("/documents/preview", JSON.parse(jsonStr));
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      const id = data?.id as string | undefined;
+      switch (action) {
+        case "search":
+          return json(await client.post("/items/search", data));
+        case "get":
+          return json(await client.get(`/items/${id}`));
+        case "create": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.post("/items", body));
+        }
+        case "update": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.put(`/items/${id}`, body));
+        }
+        case "delete":
+          return json(await client.delete(`/items/${id}`));
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
     }
   );
 
-  // ════════════════════════════════════════════════════════════════════
-  //  CLIENTS
-  // ════════════════════════════════════════════════════════════════════
+  // ── 7. EXPENSE ───────────────────────────────────────────────────────
 
   server.tool(
-    "search_clients",
-    "Search clients with filters and pagination",
+    "expense",
+    `Manage expenses (outcome tracking). ${PAYMENT_TYPES}.
+Expense statuses: 10=Open, 20=Reported.
+Expense document types: 10=Invoice, 20=Receipt, 30=Invoice+Receipt, 40=Other.
+
+Actions:
+"search" = search expenses (data: {page, pageSize, fromDate, toDate, dueDate, description, supplierId, supplierName, number, paid, reported, sort, minAmount, maxAmount, accountingClassificationId})
+"get" = get by ID (data: {"id":"..."})
+"create" = create expense (data: {paymentType, currency, currencyRate, vat, amount, date, dueDate, reportingDate, documentType, number, description, remarks, supplier:{id,name,...}, accountingClassification:{id,key,code,title,...}, active, addRecipient, addAccountingClassification})
+"update" = update expense (data: {"id":"...", ...fields}). NOTE: cannot update once reported (status=20)
+"delete" = delete expense (data: {"id":"..."})
+"open" = reopen expense (data: {"id":"..."})
+"close" = close/report expense (data: {"id":"..."})
+"get_statuses" = list expense statuses
+"get_classifications" = get accounting classifications map
+"search_drafts" = search expense drafts (data: {page, pageSize, fromDate, toDate, description, supplierId, supplierName})`,
     {
-      page: z.number().optional().describe("Page number"),
-      pageSize: z.number().optional().describe("Results per page (max 50)"),
-      name: z.string().optional().describe("Filter by client name"),
-      taxId: z.string().optional().describe("Filter by tax ID"),
-      active: z.boolean().optional().describe("Filter by active status"),
-      sort: z.string().optional().describe("Sort field"),
-      sortType: z.enum(["asc", "desc"]).optional(),
+      action: z.enum(["search", "get", "create", "update", "delete", "open", "close", "get_statuses", "get_classifications", "search_drafts"])
+        .describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters"),
     },
-    async (params) => {
-      const data = await client.post("/clients/search", params);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      const id = data?.id as string | undefined;
+      switch (action) {
+        case "search":
+          return json(await client.post("/expenses/search", data));
+        case "get":
+          return json(await client.get(`/expenses/${id}`));
+        case "create": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.post("/expenses", body));
+        }
+        case "update": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.put(`/expenses/${id}`, body));
+        }
+        case "delete":
+          return json(await client.delete(`/expenses/${id}`));
+        case "open":
+          return json(await client.post(`/expenses/${id}/open`));
+        case "close":
+          return json(await client.post(`/expenses/${id}/close`));
+        case "get_statuses":
+          return json(await client.get("/expenses/statuses"));
+        case "get_classifications":
+          return json(await client.get("/accounting/classifications/map"));
+        case "search_drafts":
+          return json(await client.post("/expenses/drafts/search", data));
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
     }
   );
 
-  server.tool(
-    "get_client",
-    "Get a client by ID",
-    { id: z.string().describe("Client ID") },
-    async ({ id }) => {
-      const data = await client.get(`/clients/${id}`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
+  // ── 8. PAYMENT ───────────────────────────────────────────────────────
 
   server.tool(
-    "create_client",
-    "Create a new client",
+    "payment",
+    `Manage payments and payment links. ${PAYMENT_TYPES}.
+
+Actions:
+"get_form" = get payment form URL for online payment (data: {type, description, lang, currency, vatType, amount, maxPayments, pluginId, group, client:{...}, income:[...], remarks, successUrl, failureUrl, notifyUrl, custom})
+"search_tokens" = search saved credit card tokens (data: {paymentNumber, cardHolder, externalKey})
+"charge_token" = charge a saved credit card token (data: {"id":"tokenId", type, description, lang, currency, vatType, amount, maxPayments, income:[...], remarks, notifyUrl})
+"create_link" = create payment link (data: {client:{...}, income:[...], currency, lang, remarks})
+"get_link" = get payment link details (data: {"id":"..."})
+"get_link_status" = check payment link status (data: {"id":"..."})`,
     {
-      name: z.string().describe("Client name"),
-      emails: z
-        .array(z.string())
-        .optional()
-        .describe("Email addresses (array)"),
-      taxId: z.string().optional().describe("Tax/VAT ID"),
-      phone: z.string().optional().describe("Phone number"),
-      mobile: z.string().optional().describe("Mobile number"),
-      fax: z.string().optional().describe("Fax number"),
-      city: z.string().optional(),
-      zip: z.string().optional(),
-      address: z.string().optional(),
-      country: z.string().optional().describe("Country code"),
-      category: z.number().optional().describe("Client category"),
-      subCategory: z.number().optional(),
-      accountingKey: z.string().optional(),
-      paymentTerms: z.number().optional().describe("Payment terms in days"),
-      bankName: z.string().optional(),
-      bankBranch: z.string().optional(),
-      bankAccount: z.string().optional(),
-      active: z.boolean().optional(),
+      action: z.enum(["get_form", "search_tokens", "charge_token", "create_link", "get_link", "get_link_status"])
+        .describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters"),
     },
-    async (params) => {
-      const data = await client.post("/clients", params);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      const id = data?.id as string | undefined;
+      switch (action) {
+        case "get_form":
+          return json(await client.post("/payments/form", data));
+        case "search_tokens":
+          return json(await client.post("/payments/tokens/search", data));
+        case "charge_token": {
+          const body = { ...data };
+          delete body.id;
+          return json(await client.post(`/payments/tokens/${id}/charge`, body));
+        }
+        case "create_link":
+          return json(await client.post("/payment/links", data));
+        case "get_link":
+          return json(await client.get(`/payment/links/${id}`));
+        case "get_link_status":
+          return json(await client.get(`/payment/links/${id}/status`));
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
     }
   );
 
+  // ── 9. WEBHOOK ───────────────────────────────────────────────────────
+
   server.tool(
-    "update_client",
-    "Update an existing client",
+    "webhook",
+    `Manage webhook subscriptions. Available events: document.created, document.updated, document.sent, document.paid, document.overdue, payment.received, payment.failed, payment.refunded, client.created, client.updated, client.deleted.
+
+Actions:
+"create" = create webhook (data: {"url":"https://...", "events":["document.created",...]})
+"get" = get webhook by ID (data: {"id":"..."})
+"delete" = delete webhook (data: {"id":"..."})`,
     {
-      id: z.string().describe("Client ID"),
-      data: z.string().describe("JSON string of client fields to update"),
+      action: z.enum(["create", "get", "delete"]).describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters"),
     },
-    async ({ id, data }) => {
-      const result = await client.put(`/clients/${id}`, JSON.parse(data));
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      const id = data?.id as string | undefined;
+      switch (action) {
+        case "create":
+          return json(await client.post("/webhooks", data));
+        case "get":
+          return json(await client.get(`/webhooks/${id}`));
+        case "delete":
+          return json(await client.delete(`/webhooks/${id}`));
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
     }
   );
 
-  server.tool(
-    "delete_client",
-    "Delete a client by ID",
-    { id: z.string().describe("Client ID") },
-    async ({ id }) => {
-      const data = await client.delete(`/clients/${id}`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
+  // ── 10. REFERENCE DATA ───────────────────────────────────────────────
 
   server.tool(
-    "get_client_documents",
-    "Get all documents associated with a client",
-    { id: z.string().describe("Client ID") },
-    async ({ id }) => {
-      const data = await client.get(`/clients/${id}/documents`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
+    "reference_data",
+    `Lookup reference data (no authentication required, served from cache.greeninvoice.co.il).
 
-  // ════════════════════════════════════════════════════════════════════
-  //  ITEMS (Product/Service Catalog)
-  // ════════════════════════════════════════════════════════════════════
-
-  server.tool(
-    "search_items",
-    "Search product/service catalog items",
+Actions:
+"occupations" = get business categories/subcategories (data: {"locale":"he_IL"})
+"countries" = get supported countries (data: {"locale":"he_IL"} or {"locale":"en_US"})
+"cities" = get supported cities (data: {"locale":"he_IL", "country":"IL"})
+"currencies" = get exchange rates (data: {"base":"ILS"})`,
     {
-      page: z.number().optional(),
-      pageSize: z.number().optional(),
-      name: z.string().optional().describe("Filter by item name"),
-      active: z.boolean().optional(),
+      action: z.enum(["occupations", "countries", "cities", "currencies"]).describe("Action to perform"),
+      data: z.string().optional().describe("JSON string of request parameters"),
     },
-    async (params) => {
-      const data = await client.post("/items/search", params);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "get_item",
-    "Get a catalog item by ID",
-    { id: z.string().describe("Item ID") },
-    async ({ id }) => {
-      const data = await client.get(`/items/${id}`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "create_item",
-    "Create a new catalog item (product or service)",
-    {
-      name: z.string().describe("Item name"),
-      description: z.string().optional(),
-      price: z.number().describe("Default price"),
-      currency: z.string().optional().describe("Currency code"),
-      vatType: z
-        .number()
-        .optional()
-        .describe("0=default, 1=VAT included, 2=VAT exempt"),
-      sku: z.string().optional().describe("SKU / catalog number"),
-      active: z.boolean().optional(),
-    },
-    async (params) => {
-      const data = await client.post("/items", params);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "update_item",
-    "Update a catalog item",
-    {
-      id: z.string().describe("Item ID"),
-      data: z.string().describe("JSON string of item fields to update"),
-    },
-    async ({ id, data }) => {
-      const result = await client.put(`/items/${id}`, JSON.parse(data));
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
-    }
-  );
-
-  // ════════════════════════════════════════════════════════════════════
-  //  PAYMENT LINKS
-  // ════════════════════════════════════════════════════════════════════
-
-  server.tool(
-    "create_payment_link",
-    "Create a payment link for online payment collection",
-    {
-      data: z.string().describe("JSON string with: client (object), income (array of line items), currency (optional), lang ('he'|'en' optional), remarks (optional)"),
-    },
-    async ({ data: jsonStr }) => {
-      const data = await client.post("/payment/links", JSON.parse(jsonStr));
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "get_payment_link",
-    "Get payment link details",
-    { id: z.string().describe("Payment link ID") },
-    async ({ id }) => {
-      const data = await client.get(`/payment/links/${id}`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "get_payment_link_status",
-    "Check the status of a payment link",
-    { id: z.string().describe("Payment link ID") },
-    async ({ id }) => {
-      const data = await client.get(`/payment/links/${id}/status`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  // ════════════════════════════════════════════════════════════════════
-  //  WEBHOOKS
-  // ════════════════════════════════════════════════════════════════════
-
-  server.tool(
-    "create_webhook",
-    `Create a webhook subscription. Events: document.created, document.updated,
-document.sent, document.paid, document.overdue, payment.received,
-payment.failed, payment.refunded, client.created, client.updated, client.deleted`,
-    {
-      url: z.string().describe("Webhook callback URL"),
-      events: z.array(z.string()).describe("Event types to subscribe to"),
-    },
-    async (params) => {
-      const data = await client.post("/webhooks", params);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "get_webhook",
-    "Get webhook by ID",
-    { id: z.string().describe("Webhook ID") },
-    async ({ id }) => {
-      const data = await client.get(`/webhooks/${id}`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "delete_webhook",
-    "Delete a webhook subscription",
-    { id: z.string().describe("Webhook ID") },
-    async ({ id }) => {
-      const data = await client.delete(`/webhooks/${id}`);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      };
+    async ({ action, data: raw }) => {
+      const data = parseData(raw) as Record<string, unknown> | undefined;
+      const CACHE_BASE = "https://cache.greeninvoice.co.il";
+      let url: string;
+      switch (action) {
+        case "occupations":
+          url = `${CACHE_BASE}/businesses/v1/occupations?locale=${data?.locale || "he_IL"}`;
+          break;
+        case "countries":
+          url = `${CACHE_BASE}/geo-location/v1/countries?locale=${data?.locale || "he_IL"}`;
+          break;
+        case "cities":
+          url = `${CACHE_BASE}/geo-location/v1/cities?locale=${data?.locale || "he_IL"}&country=${data?.country || "IL"}`;
+          break;
+        case "currencies":
+          url = `${CACHE_BASE}/currency-exchange/v1/latest?base=${data?.base || "ILS"}`;
+          break;
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Reference data error (${res.status}): ${await res.text()}`);
+      return json(await res.json());
     }
   );
 }

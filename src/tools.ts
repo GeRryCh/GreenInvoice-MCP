@@ -12,6 +12,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { GreenInvoiceClient } from "./client.js";
+import { toolSchemas } from "./schemas.js";
 
 // ── Shared helpers ─────────────────────────────────────────────────────
 
@@ -26,6 +27,26 @@ function parseData(raw?: string): unknown {
   } catch {
     throw new Error(`Invalid JSON in 'data' parameter: ${raw}`);
   }
+}
+
+function validateData(
+  toolName: string,
+  action: string,
+  raw?: string
+): Record<string, unknown> | undefined {
+  const parsed = parseData(raw);
+  const schema = toolSchemas[toolName]?.[action];
+  if (!schema) return parsed as Record<string, unknown> | undefined;
+  return schema.parse(parsed ?? {}) as Record<string, unknown>;
+}
+
+function formatZodError(err: z.ZodError): string {
+  return err.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
+      return `  - ${path}: ${issue.message}`;
+    })
+    .join("\n");
 }
 
 // ── Reference enums (embedded in descriptions) ────────────────────────
@@ -77,7 +98,8 @@ Actions: "get" = account info (GET /account/me), "settings" = account settings (
       data: z.string().optional().describe("JSON string of request parameters (see action descriptions)"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("business", action, raw);
       switch (action) {
         case "list":
           return json(await client.get("/businesses"));
@@ -103,6 +125,10 @@ Actions: "get" = account info (GET /account/me), "settings" = account settings (
           return json(await client.request("DELETE", "/businesses/file", data));
         default:
           throw new Error(`Unknown action: ${action}`);
+      }
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for business/${action}:\n${formatZodError(err)}`);
+        throw err;
       }
     }
   );
@@ -135,7 +161,8 @@ Actions:
       data: z.string().optional().describe("JSON string of request parameters"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("document", action, raw);
       const id = data?.id as string | undefined;
       switch (action) {
         case "search":
@@ -189,6 +216,10 @@ Actions:
         default:
           throw new Error(`Unknown action: ${action}`);
       }
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for document/${action}:\n${formatZodError(err)}`);
+        throw err;
+      }
     }
   );
 
@@ -211,7 +242,8 @@ Actions:
       data: z.string().optional().describe("JSON string of request parameters"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("client", action, raw);
       const id = data?.id as string | undefined;
       switch (action) {
         case "search":
@@ -245,6 +277,10 @@ Actions:
         default:
           throw new Error(`Unknown action: ${action}`);
       }
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for client/${action}:\n${formatZodError(err)}`);
+        throw err;
+      }
     }
   );
 
@@ -265,7 +301,8 @@ Actions:
       data: z.string().optional().describe("JSON string of request parameters"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("supplier", action, raw);
       const id = data?.id as string | undefined;
       switch (action) {
         case "search":
@@ -291,6 +328,10 @@ Actions:
         default:
           throw new Error(`Unknown action: ${action}`);
       }
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for supplier/${action}:\n${formatZodError(err)}`);
+        throw err;
+      }
     }
   );
 
@@ -310,7 +351,8 @@ Actions:
       data: z.string().optional().describe("JSON string of request parameters"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("item", action, raw);
       const id = data?.id as string | undefined;
       switch (action) {
         case "search":
@@ -331,6 +373,10 @@ Actions:
           return json(await client.delete(`/items/${id}`));
         default:
           throw new Error(`Unknown action: ${action}`);
+      }
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for item/${action}:\n${formatZodError(err)}`);
+        throw err;
       }
     }
   );
@@ -360,7 +406,8 @@ Actions:
       data: z.string().optional().describe("JSON string of request parameters"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("expense", action, raw);
       const id = data?.id as string | undefined;
       switch (action) {
         case "search":
@@ -392,6 +439,10 @@ Actions:
         default:
           throw new Error(`Unknown action: ${action}`);
       }
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for expense/${action}:\n${formatZodError(err)}`);
+        throw err;
+      }
     }
   );
 
@@ -414,7 +465,8 @@ Actions:
       data: z.string().optional().describe("JSON string of request parameters"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("payment", action, raw);
       const id = data?.id as string | undefined;
       switch (action) {
         case "get_form":
@@ -435,6 +487,10 @@ Actions:
         default:
           throw new Error(`Unknown action: ${action}`);
       }
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for payment/${action}:\n${formatZodError(err)}`);
+        throw err;
+      }
     }
   );
 
@@ -453,7 +509,8 @@ Actions:
       data: z.string().optional().describe("JSON string of request parameters"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("webhook", action, raw);
       const id = data?.id as string | undefined;
       switch (action) {
         case "create":
@@ -464,6 +521,10 @@ Actions:
           return json(await client.delete(`/webhooks/${id}`));
         default:
           throw new Error(`Unknown action: ${action}`);
+      }
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for webhook/${action}:\n${formatZodError(err)}`);
+        throw err;
       }
     }
   );
@@ -484,7 +545,8 @@ Actions:
       data: z.string().optional().describe("JSON string of request parameters"),
     },
     async ({ action, data: raw }) => {
-      const data = parseData(raw) as Record<string, unknown> | undefined;
+      try {
+      const data = validateData("reference_data", action, raw);
       const CACHE_BASE = "https://cache.greeninvoice.co.il";
       let url: string;
       switch (action) {
@@ -506,6 +568,10 @@ Actions:
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Reference data error (${res.status}): ${await res.text()}`);
       return json(await res.json());
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error(`Invalid data for reference_data/${action}:\n${formatZodError(err)}`);
+        throw err;
+      }
     }
   );
 }

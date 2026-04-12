@@ -47,17 +47,24 @@ npm run build
 
 ## Configuration
 
-The server requires these environment variables:
+The server supports separate credentials for the sandbox and production environments. Define both sets of credentials and use `GREENINVOICE_ENVIRONMENT` to switch between them.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GREENINVOICE_API_ID` | Yes | Your Green Invoice API key ID |
-| `GREENINVOICE_API_SECRET` | Yes | Your Green Invoice API key secret |
-| `GREENINVOICE_SANDBOX` | No | Set to `true` to use the sandbox environment |
+| `GREENINVOICE_ENVIRONMENT` | No | `"production"` (default) or `"sandbox"` |
+| `GREENINVOICE_PRODUCTION_API_ID` | Yes* | Production API key ID |
+| `GREENINVOICE_PRODUCTION_API_SECRET` | Yes* | Production API key secret |
+| `GREENINVOICE_SANDBOX_API_ID` | Yes* | Sandbox API key ID |
+| `GREENINVOICE_SANDBOX_API_SECRET` | Yes* | Sandbox API key secret |
+| `GREENINVOICE_API_ID` | Legacy | Fallback API key ID (used when environment-specific vars are absent) |
+| `GREENINVOICE_API_SECRET` | Legacy | Fallback API key secret |
+| `GREENINVOICE_SANDBOX` | Legacy | Set to `true` to use the sandbox environment (use `GREENINVOICE_ENVIRONMENT` instead) |
+
+*At least one credential pair must be set for the active environment. The legacy `GREENINVOICE_API_ID` / `GREENINVOICE_API_SECRET` pair is used as a fallback when no environment-specific vars are found.
 
 ## MCP Client Configuration
 
-To add this server to any MCP-compatible client:
+To add this server to any MCP-compatible client with both credential sets configured:
 
 ```json
 {
@@ -66,8 +73,11 @@ To add this server to any MCP-compatible client:
       "command": "npx",
       "args": ["-y", "greeninvoice-mcp"],
       "env": {
-        "GREENINVOICE_API_ID": "your-api-id-here",
-        "GREENINVOICE_API_SECRET": "your-api-secret-here"
+        "GREENINVOICE_ENVIRONMENT": "production",
+        "GREENINVOICE_PRODUCTION_API_ID": "your-production-api-id-here",
+        "GREENINVOICE_PRODUCTION_API_SECRET": "your-production-api-secret-here",
+        "GREENINVOICE_SANDBOX_API_ID": "your-sandbox-api-id-here",
+        "GREENINVOICE_SANDBOX_API_SECRET": "your-sandbox-api-secret-here"
       },
       "description": "Green Invoice API for Israeli invoicing and accounting",
       "type": "stdio"
@@ -76,7 +86,7 @@ To add this server to any MCP-compatible client:
 }
 ```
 
-For sandbox/testing, add `"GREENINVOICE_SANDBOX": "true"` to the `env` object.
+Change `"GREENINVOICE_ENVIRONMENT": "production"` to `"sandbox"` to switch to the sandbox environment without touching the credentials.
 
 ## Usage with Claude Code
 
@@ -89,31 +99,18 @@ Add to your Claude Code MCP settings (`~/.claude/settings.json` or project `.cla
       "command": "npx",
       "args": ["-y", "greeninvoice-mcp"],
       "env": {
-        "GREENINVOICE_API_ID": "your-api-id-here",
-        "GREENINVOICE_API_SECRET": "your-api-secret-here"
+        "GREENINVOICE_ENVIRONMENT": "production",
+        "GREENINVOICE_PRODUCTION_API_ID": "your-production-api-id-here",
+        "GREENINVOICE_PRODUCTION_API_SECRET": "your-production-api-secret-here",
+        "GREENINVOICE_SANDBOX_API_ID": "your-sandbox-api-id-here",
+        "GREENINVOICE_SANDBOX_API_SECRET": "your-sandbox-api-secret-here"
       }
     }
   }
 }
 ```
 
-For sandbox/testing:
-
-```json
-{
-  "mcpServers": {
-    "greeninvoice": {
-      "command": "npx",
-      "args": ["-y", "greeninvoice-mcp"],
-      "env": {
-        "GREENINVOICE_API_ID": "your-api-id-here",
-        "GREENINVOICE_API_SECRET": "your-api-secret-here",
-        "GREENINVOICE_SANDBOX": "true"
-      }
-    }
-  }
-}
-```
+To switch to sandbox, change `GREENINVOICE_ENVIRONMENT` to `"sandbox"`.
 
 ### Running from source with Claude Code
 
@@ -126,8 +123,11 @@ If you cloned the repo locally:
       "command": "node",
       "args": ["/path/to/GreenInvoice-MCP/dist/index.js"],
       "env": {
-        "GREENINVOICE_API_ID": "your-api-id-here",
-        "GREENINVOICE_API_SECRET": "your-api-secret-here"
+        "GREENINVOICE_ENVIRONMENT": "production",
+        "GREENINVOICE_PRODUCTION_API_ID": "your-production-api-id-here",
+        "GREENINVOICE_PRODUCTION_API_SECRET": "your-production-api-secret-here",
+        "GREENINVOICE_SANDBOX_API_ID": "your-sandbox-api-id-here",
+        "GREENINVOICE_SANDBOX_API_SECRET": "your-sandbox-api-secret-here"
       }
     }
   }

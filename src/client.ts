@@ -23,7 +23,7 @@ export class GreenInvoiceClient {
   private tokenCache: TokenCache | null = null;
   private lastRequestTime = 0;
 
-  constructor(apiId: string, apiSecret: string, sandbox = false) {
+  constructor(apiId: string, apiSecret: string, sandbox: boolean) {
     this.apiId = apiId;
     this.apiSecret = apiSecret;
     this.baseUrl = sandbox ? SANDBOX_BASE : PRODUCTION_BASE;

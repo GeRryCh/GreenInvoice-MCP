@@ -15,17 +15,30 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { GreenInvoiceClient } from "./client.js";
 import { registerTools } from "./tools.js";
 
-const API_ID = process.env.GREENINVOICE_API_ID;
-const API_SECRET = process.env.GREENINVOICE_API_SECRET;
-const SANDBOX = process.env.GREENINVOICE_SANDBOX === "true";
+// Determine active environment (defaults to production)
+const envVar = process.env.GREENINVOICE_ENVIRONMENT?.toLowerCase();
+const isSandbox = envVar === "sandbox";
+
+// Resolve credentials for the active environment
+const API_ID = isSandbox
+  ? process.env.GREENINVOICE_SANDBOX_API_ID
+  : process.env.GREENINVOICE_PRODUCTION_API_ID;
+
+const API_SECRET = isSandbox
+  ? process.env.GREENINVOICE_SANDBOX_API_SECRET
+  : process.env.GREENINVOICE_PRODUCTION_API_SECRET;
 
 if (!API_ID || !API_SECRET) {
+  const env = isSandbox ? "sandbox" : "production";
   console.error(
-    "Error: GREENINVOICE_API_ID and GREENINVOICE_API_SECRET environment variables are required.\n" +
+    `Error: No API credentials found for the ${env} environment.\n` +
+      `Set GREENINVOICE_${env.toUpperCase()}_API_ID and GREENINVOICE_${env.toUpperCase()}_API_SECRET.\n` +
       "Get your API credentials from Green Invoice: My Account > Developer Tools > API Keys > Add Key"
   );
   process.exit(1);
 }
+
+console.error(`[green-invoice-mcp] Environment: ${isSandbox ? "sandbox" : "production"}`);
 
 const server = new McpServer({
   name: "greeninvoice-mcp",
@@ -34,7 +47,7 @@ const server = new McpServer({
     "Unofficial MCP server for the Green Invoice API. Not affiliated with or endorsed by Green Invoice.",
 });
 
-const client = new GreenInvoiceClient(API_ID, API_SECRET, SANDBOX);
+const client = new GreenInvoiceClient(API_ID, API_SECRET, isSandbox);
 
 registerTools(server, client);
 

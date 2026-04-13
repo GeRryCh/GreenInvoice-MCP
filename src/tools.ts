@@ -65,12 +65,14 @@ export function registerTools(server: McpServer, client: GreenInvoiceClient) {
 
   // ── 1. ACCOUNT ───────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "account",
-    `Get account information.
-Actions: "get" = account info (GET /account/me), "settings" = account settings (GET /account/settings).`,
     {
-      action: z.enum(["get", "settings"]).describe("Action to perform"),
+      description: `Get account information.
+Actions: "get" = account info (GET /account/me), "settings" = account settings (GET /account/settings).`,
+      inputSchema: z.object({
+        action: z.enum(["get", "settings"]).describe("Action to perform"),
+      }),
     },
     async ({ action }) => {
       const path = action === "settings" ? "/account/settings" : "/account/me";
@@ -80,9 +82,10 @@ Actions: "get" = account info (GET /account/me), "settings" = account settings (
 
   // ── 2. BUSINESS ──────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "business",
-    `Manage businesses. Actions:
+    {
+      description: `Manage businesses. Actions:
 "list" = list all user businesses (GET /businesses)
 "get" = get current business (GET /businesses/me) or by id (data: {"id":"..."})
 "update" = update business (data: JSON of fields to update)
@@ -92,10 +95,11 @@ Actions: "get" = account info (GET /account/me), "settings" = account settings (
 "get_types" = get business types (data: {"lang":"he"} optional)
 "upload_file" = upload logo/signature/doc (data: {"type":"logo","file":"base64..."})
 "delete_file" = delete a file (data: {"type":"logo"})`,
-    {
-      action: z.enum(["list", "get", "update", "get_numbering", "set_numbering", "get_footer", "get_types", "upload_file", "delete_file"])
-        .describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters (see action descriptions)"),
+      inputSchema: z.object({
+        action: z.enum(["list", "get", "update", "get_numbering", "set_numbering", "get_footer", "get_types", "upload_file", "delete_file"])
+          .describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters (see action descriptions)"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {
@@ -135,9 +139,10 @@ Actions: "get" = account info (GET /account/me), "settings" = account settings (
 
   // ── 3. DOCUMENT ──────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "document",
-    `Manage documents (invoices, receipts, quotes, etc.). ${DOC_TYPES}. ${DOC_STATUSES}. ${PAYMENT_TYPES}. ${CURRENCIES}.
+    {
+      description: `Manage documents (invoices, receipts, quotes, etc.). ${DOC_TYPES}. ${DOC_STATUSES}. ${PAYMENT_TYPES}. ${CURRENCIES}.
 
 Actions:
 "search" = search documents (data: {page, pageSize, type:[], status:[], fromDate, toDate, sort, clientId, clientName, description, number, paymentTypes:[], download})
@@ -155,10 +160,11 @@ Actions:
 "get_types" = list document types (data: {"lang":"he"} optional)
 "get_statuses" = list document statuses (data: {"lang":"he"} optional)
 "search_payments" = search payments within documents (data: {page, pageSize, type:[], paymentTypes:[], fromDate, toDate, paymentId, sort})`,
-    {
-      action: z.enum(["search", "get", "create", "update", "close", "open", "send", "download_links", "add_payment", "preview", "get_linked", "get_info", "get_types", "get_statuses", "search_payments"])
-        .describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters"),
+      inputSchema: z.object({
+        action: z.enum(["search", "get", "create", "update", "close", "open", "send", "download_links", "add_payment", "preview", "get_linked", "get_info", "get_types", "get_statuses", "search_payments"])
+          .describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {
@@ -225,9 +231,10 @@ Actions:
 
   // ── 4. CLIENT ────────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "client",
-    `Manage clients. Actions:
+    {
+      description: `Manage clients. Actions:
 "search" = search clients (data: {page, pageSize, name, email, taxId, active, contactPerson, labels:[], sort, sortType})
 "get" = get by ID (data: {"id":"..."})
 "create" = create client (data: {name, emails:[], taxId, phone, mobile, fax, city, zip, address, country, category, subCategory, accountingKey, paymentTerms, bankName, bankBranch, bankAccount, active, department, contactPerson, remarks, labels:[]})
@@ -236,10 +243,11 @@ Actions:
 "associate_docs" = associate existing documents to a client (data: {"id":"...", "ids":["docId1","docId2"]})
 "merge" = merge clients (one must be inactive; inactive one is deleted) (data: {"id":"...", "mergeId":"..."})
 "update_balance" = update/reset client balance (data: {"id":"...", "balance":0})`,
-    {
-      action: z.enum(["search", "get", "create", "update", "delete", "associate_docs", "merge", "update_balance"])
-        .describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters"),
+      inputSchema: z.object({
+        action: z.enum(["search", "get", "create", "update", "delete", "associate_docs", "merge", "update_balance"])
+          .describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {
@@ -286,19 +294,21 @@ Actions:
 
   // ── 5. SUPPLIER ──────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "supplier",
-    `Manage suppliers (used for expenses). Actions:
+    {
+      description: `Manage suppliers (used for expenses). Actions:
 "search" = search suppliers (data: {page, pageSize, name, email, active, contactPerson, labels:[]})
 "get" = get by ID (data: {"id":"..."})
 "create" = create supplier (data: {name, emails:[], taxId, phone, mobile, fax, city, zip, address, country, department, accountingKey, paymentTerms, bankName, bankBranch, bankAccount, active, contactPerson, remarks, labels:[]})
 "update" = update supplier (data: {"id":"...", ...fields})
 "delete" = delete supplier (NOTE: only inactive suppliers can be deleted) (data: {"id":"..."})
 "merge" = merge suppliers (one must be inactive) (data: {"id":"...", "mergeId":"..."})`,
-    {
-      action: z.enum(["search", "get", "create", "update", "delete", "merge"])
-        .describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters"),
+      inputSchema: z.object({
+        action: z.enum(["search", "get", "create", "update", "delete", "merge"])
+          .describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {
@@ -337,18 +347,20 @@ Actions:
 
   // ── 6. ITEM ──────────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "item",
-    `Manage catalog items (products/services). Actions:
+    {
+      description: `Manage catalog items (products/services). Actions:
 "search" = search items (data: {page, pageSize, name, description, currency, active})
 "get" = get by ID (data: {"id":"..."})
 "create" = create item (data: {name, description, price, currency, vatType (0=default,1=included,2=exempt), sku, active})
 "update" = update item (data: {"id":"...", ...fields})
 "delete" = delete item (data: {"id":"..."})`,
-    {
-      action: z.enum(["search", "get", "create", "update", "delete"])
-        .describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters"),
+      inputSchema: z.object({
+        action: z.enum(["search", "get", "create", "update", "delete"])
+          .describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {
@@ -383,9 +395,10 @@ Actions:
 
   // ── 7. EXPENSE ───────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "expense",
-    `Manage expenses (outcome tracking). ${PAYMENT_TYPES}.
+    {
+      description: `Manage expenses (outcome tracking). ${PAYMENT_TYPES}.
 Expense statuses: 10=Open, 20=Reported.
 Expense document types: 10=Invoice, 20=Receipt, 30=Invoice+Receipt, 40=Other.
 
@@ -400,10 +413,11 @@ Actions:
 "get_statuses" = list expense statuses
 "get_classifications" = get accounting classifications map
 "search_drafts" = search expense drafts (data: {page, pageSize, fromDate, toDate, description, supplierId, supplierName})`,
-    {
-      action: z.enum(["search", "get", "create", "update", "delete", "open", "close", "get_statuses", "get_classifications", "search_drafts"])
-        .describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters"),
+      inputSchema: z.object({
+        action: z.enum(["search", "get", "create", "update", "delete", "open", "close", "get_statuses", "get_classifications", "search_drafts"])
+          .describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {
@@ -448,9 +462,10 @@ Actions:
 
   // ── 8. PAYMENT ───────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "payment",
-    `Manage payments and payment links. ${PAYMENT_TYPES}.
+    {
+      description: `Manage payments and payment links. ${PAYMENT_TYPES}.
 
 Actions:
 "get_form" = get payment form URL for online payment (data: {type, description, lang, currency, vatType, amount, maxPayments, pluginId, group, client:{...}, income:[...], remarks, successUrl, failureUrl, notifyUrl, custom})
@@ -459,10 +474,11 @@ Actions:
 "create_link" = create payment link (data: {client:{...}, income:[...], currency, lang, remarks})
 "get_link" = get payment link details (data: {"id":"..."})
 "get_link_status" = check payment link status (data: {"id":"..."})`,
-    {
-      action: z.enum(["get_form", "search_tokens", "charge_token", "create_link", "get_link", "get_link_status"])
-        .describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters"),
+      inputSchema: z.object({
+        action: z.enum(["get_form", "search_tokens", "charge_token", "create_link", "get_link", "get_link_status"])
+          .describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {
@@ -496,17 +512,19 @@ Actions:
 
   // ── 9. WEBHOOK ───────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "webhook",
-    `Manage webhook subscriptions. Available events: document.created, document.updated, document.sent, document.paid, document.overdue, payment.received, payment.failed, payment.refunded, client.created, client.updated, client.deleted.
+    {
+      description: `Manage webhook subscriptions. Available events: document.created, document.updated, document.sent, document.paid, document.overdue, payment.received, payment.failed, payment.refunded, client.created, client.updated, client.deleted.
 
 Actions:
 "create" = create webhook (data: {"url":"https://...", "events":["document.created",...]})
 "get" = get webhook by ID (data: {"id":"..."})
 "delete" = delete webhook (data: {"id":"..."})`,
-    {
-      action: z.enum(["create", "get", "delete"]).describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters"),
+      inputSchema: z.object({
+        action: z.enum(["create", "get", "delete"]).describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {
@@ -531,18 +549,20 @@ Actions:
 
   // ── 10. REFERENCE DATA ───────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "reference_data",
-    `Lookup reference data (no authentication required, served from cache.greeninvoice.co.il).
+    {
+      description: `Lookup reference data (no authentication required, served from cache.greeninvoice.co.il).
 
 Actions:
 "occupations" = get business categories/subcategories (data: {"locale":"he_IL"})
 "countries" = get supported countries (data: {"locale":"he_IL"} or {"locale":"en_US"})
 "cities" = get supported cities (data: {"locale":"he_IL", "country":"IL"})
 "currencies" = get exchange rates (data: {"base":"ILS"})`,
-    {
-      action: z.enum(["occupations", "countries", "cities", "currencies"]).describe("Action to perform"),
-      data: z.string().optional().describe("JSON string of request parameters"),
+      inputSchema: z.object({
+        action: z.enum(["occupations", "countries", "cities", "currencies"]).describe("Action to perform"),
+        data: z.string().optional().describe("JSON string of request parameters"),
+      }),
     },
     async ({ action, data: raw }) => {
       try {

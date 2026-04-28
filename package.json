@@ -1,7 +1,7 @@
 {
-  "name": "greeninvoice-mcp",
-  "version": "0.2.0",
-  "description": "Unofficial MCP (Model Context Protocol) server for the Green Invoice API. Not affiliated with or endorsed by Green Invoice.",
+  "name": "@gerrych/greeninvoice-mcp",
+  "version": "0.3.0",
+  "description": "Unofficial MCP (Model Context Protocol) server for the Green Invoice API. Community fork. Not affiliated with or endorsed by Green Invoice.",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -10,13 +10,25 @@
     "israel",
     "invoicing",
     "claude",
-    "ai"
+    "ai",
+    "fork",
+    "unofficial"
   ],
-  "author": "Daniel Rosehill <public@danielrosehill.com>",
+  "author": "German Velibekov <german.velibekov@gmail.com>",
+  "contributors": [
+    "Daniel Rosehill <public@danielrosehill.com> (original author)"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/danielrosehill/GreenInvoice-MCP"
+    "url": "git+https://github.com/GeRryCh/GreenInvoice-MCP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GeRryCh/GreenInvoice-MCP/issues"
+  },
+  "homepage": "https://github.com/GeRryCh/GreenInvoice-MCP#readme",
+  "publishConfig": {
+    "access": "public"
   },
   "type": "module",
   "main": "dist/index.js",

@@ -38,13 +38,13 @@ if (!API_ID || !API_SECRET) {
   process.exit(1);
 }
 
-console.error(`[green-invoice-mcp] Environment: ${isSandbox ? "sandbox" : "production"}`);
+console.error(`[@gerrych/greeninvoice-mcp] Environment: ${isSandbox ? "sandbox" : "production"}`);
 
 const server = new McpServer({
-  name: "greeninvoice-mcp",
-  version: "0.1.0",
+  name: "@gerrych/greeninvoice-mcp",
+  version: "0.3.0",
   description:
-    "Unofficial MCP server for the Green Invoice API. Not affiliated with or endorsed by Green Invoice.",
+    "Unofficial MCP server for the Green Invoice API (community fork). Not affiliated with or endorsed by Green Invoice.",
 });
 
 const client = new GreenInvoiceClient(API_ID, API_SECRET, isSandbox);

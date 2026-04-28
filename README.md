@@ -1,6 +1,8 @@
-# Green Invoice MCP Server
+# Green Invoice MCP Server (`@gerrych/greeninvoice-mcp`)
 
 > **DISCLAIMER: This is an UNOFFICIAL, third-party MCP server. It is NOT affiliated with, endorsed by, or supported by Green Invoice (Optimax Ltd). Use at your own risk. Always verify operations against the official Green Invoice dashboard.**
+
+> **Community fork:** This package (`@gerrych/greeninvoice-mcp`) is an independently published, community-maintained alternative to the original [`greeninvoice-mcp`](https://github.com/danielrosehill/GreenInvoice-MCP) by Daniel Rosehill. It includes additional improvements (typed input schemas, Zod validation, dual sandbox/production credentials) that were submitted as PRs upstream but not yet merged.
 
 An MCP (Model Context Protocol) server that provides AI assistants with access to the [Green Invoice](https://www.greeninvoice.co.il/) API for Israeli invoicing and accounting.
 
@@ -33,13 +35,13 @@ You need API credentials from Green Invoice:
 ### From npm
 
 ```bash
-npm install -g greeninvoice-mcp
+npm install -g @gerrych/greeninvoice-mcp
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/danielrosehill/GreenInvoice-MCP.git
+git clone https://github.com/GeRryCh/GreenInvoice-MCP.git
 cd GreenInvoice-MCP
 npm install
 npm run build
@@ -68,7 +70,7 @@ To add this server to any MCP-compatible client with both credential sets config
   "mcpServers": {
     "greeninvoice": {
       "command": "npx",
-      "args": ["-y", "greeninvoice-mcp"],
+      "args": ["-y", "@gerrych/greeninvoice-mcp"],
       "env": {
         "GREENINVOICE_ENVIRONMENT": "production",
         "GREENINVOICE_PRODUCTION_API_ID": "your-production-api-id-here",
@@ -94,7 +96,7 @@ Add to your Claude Code MCP settings (`~/.claude/settings.json` or project `.cla
   "mcpServers": {
     "greeninvoice": {
       "command": "npx",
-      "args": ["-y", "greeninvoice-mcp"],
+      "args": ["-y", "@gerrych/greeninvoice-mcp"],
       "env": {
         "GREENINVOICE_ENVIRONMENT": "production",
         "GREENINVOICE_PRODUCTION_API_ID": "your-production-api-id-here",
@@ -118,7 +120,7 @@ If you cloned the repo locally:
   "mcpServers": {
     "greeninvoice": {
       "command": "node",
-      "args": ["/path/to/GreenInvoice-MCP/dist/index.js"],
+      "args": ["/path/to/GeRryCh-GreenInvoice-MCP/dist/index.js"],
       "env": {
         "GREENINVOICE_ENVIRONMENT": "production",
         "GREENINVOICE_PRODUCTION_API_ID": "your-production-api-id-here",
@@ -181,7 +183,9 @@ See [API_REFERENCE.md](API_REFERENCE.md) for the complete endpoint reference (66
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+Original work Copyright (c) 2026 Daniel Rosehill. Modifications and derivative work Copyright (c) 2026 German Velibekov.
 
 ---
 

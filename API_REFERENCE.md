@@ -191,7 +191,7 @@ ILS, USD, EUR, GBP, JPY, CHF, CNY, AUD, CAD, DKK, NOK, ZAR, SEK, CZK, IMP, JOD, 
 - Document types 320, 400, 405 **require** a payment array
 - Payment dates cannot be in the future for receipt-type documents
 - Set `client.add = true` to auto-create a client during document creation
-- JWT tokens last ~30 minutes; re-authenticate via `POST /account/token` with `{id, secret}`
+- JWT tokens last ~30 minutes; re-authenticate via `POST /account/token` with `{id, secret, grant_type: "client_credentials"}` (API 2.0, effective June 2026 — old body blocked after)
 - Rate limit: ~3 requests/second
 - Only inactive clients/suppliers can be deleted
 - Expenses cannot be updated once reported (status=20)

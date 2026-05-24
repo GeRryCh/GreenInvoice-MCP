@@ -177,6 +177,7 @@ See [API_REFERENCE.md](API_REFERENCE.md) for the complete endpoint reference (66
 
 ## MCP Validation Notes
 
+- **24/05/2026**: Aligned with Green Invoice / Morning API 2.0 (effective June 2026). Token request now sends `grant_type: "client_credentials"` alongside `id` and `secret`. Production base `api.greeninvoice.co.il` already in use; legacy `www.` host and old token body blocked after June 2026.
 - **03/04/2026**: Consolidated from 29 individual tools to 10 resource-based tools. Added full API coverage (66 endpoints) including suppliers, expenses, payments, partners reference data, and previously missing document/business/client endpoints. API spec sourced from Apiary blueprint (updated 2026-03-11).
 - **01/04/2026**: Validated against the [Green Invoice API docs](https://www.greeninvoice.co.il/api-docs/). Basic business document functions tested: create invoice/receipt, issue. All tools worked as expected.
   - Removed `delete_document` tool -- not supported by the API (no `DELETE /documents/{id}` endpoint exists).

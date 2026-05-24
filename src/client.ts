@@ -51,7 +51,7 @@ export class GreenInvoiceClient {
     const res = await fetch(`${this.baseUrl}/account/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: this.apiId, secret: this.apiSecret }),
+      body: JSON.stringify({ id: this.apiId, secret: this.apiSecret, grant_type: "client_credentials" }),
     });
 
     if (!res.ok) {

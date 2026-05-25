@@ -10,6 +10,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      attestations: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,4 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm install -g npm@latest
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: 'dist/**/*'
       - run: npm publish --provenance --access public

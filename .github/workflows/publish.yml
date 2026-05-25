@@ -23,5 +23,9 @@ jobs:
       - run: npm install -g npm@latest
       - uses: actions/attest-build-provenance@v4
         with:
-          subject-path: 'dist/**/*'
+          subject-path: |
+            dist/**/*
+            package.json
+            README.md
+            LICENSE
       - run: npm publish --provenance --access public
